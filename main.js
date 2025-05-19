@@ -1,11 +1,15 @@
 // SETUP: Define dimensions and margins for the charts
 const margin = { top: 50, right: 30, bottom: 60, left: 70 },
-      width = 800 - margin.left - margin.right,
-      height = 400 - margin.top - margin.bottom;
+    width = 800 - margin.left - margin.right,
+    height = 400 - margin.top - margin.bottom;
 
 // 1: CREATE SVG CONTAINERS
 // 1: Line Chart Container
 const svgLine = d3.select("#lineChart")
+    .append("g")
+    .attr("transform", `translate(${margin.left},${margin.top})`);
+
+const svgBar = d3.select("#barChart")
     .append("g")
     .attr("transform", `translate(${margin.left},${margin.top})`);
 
@@ -16,6 +20,7 @@ d3.csv("movies.csv").then(data => {
         d.score = +d.imdb_score;   // Convert score to a number
         d.year = +d.title_year;    // Convert year to a number
         d.director = d.director_name;
+        d.gross = +d.gross;
     });
 
     // Check your work
@@ -67,4 +72,86 @@ d3.csv("movies.csv").then(data => {
 
     // 7.c: Y-axis label (Average IMDb Score)
 
+    /* ===================== Bar CHART ===================== */
+    // PREP DATA
+    // clean data
+    const barCleanData = data.filter(d =>
+        d.score != null
+        && d.director != ''
+    )
+
+    console.log("Bar clean data: ", barCleanData)
+
+    // group by director and aggregate the average score
+    const barMap = d3.rollup(barCleanData,
+        v => d3.mean(v, d => d.score),
+        d => d.director
+    );
+
+    console.log("Bar map: ", barMap);
+
+    // sort and get top 6
+    const barFinalArr = Array.from(barMap,
+        ([director, score]) => ({ director, score })
+    )
+        .sort((a, b) => b.score - a.score) // sort in descending
+        .slice(0, 6);
+
+    console.log("Bar final array: ", barFinalArr);
+
+    // SCALE AXIS
+    // x-axis
+    const xBarScale = d3.scaleBand()
+        .domain(barFinalArr.map(d => d.director))
+        .range([0, width])
+        .padding(0.1);
+
+    // y-axis
+    const yBarScale = d3.scaleLinear()
+        .domain([0, d3.max(barFinalArr, d => d.score)])
+        .range([height, 0]);
+
+    // PLOT DATA
+    svgBar.selectAll("rect")
+        .data(barFinalArr)
+        .enter()
+        .append("rect")
+        .attr("x", d => xBarScale(d.director))
+        .attr("y", d => yBarScale(d.score))
+        .attr("width", xBarScale.bandwidth())
+        .attr("height", d => height - yBarScale(d.score))
+        .attr("fill", "purple");
+
+    // ADD AXIS
+    // x-axis
+    svgBar.append("g")
+        .attr("transform", `translate(0, ${height})`)
+        .call(d3.axisBottom(xBarScale));
+
+    // y -axis
+    svgBar.append("g")
+        .call(d3.axisLeft(yBarScale));
+
+    // ADD LABELS
+    // title
+    svgBar.append("text")
+        .attr("class", "title")
+        .attr("x", width / 2)
+        .attr("y", -margin.top / 2)
+        .text("Top 6 Average IMDb Scores by Director");
+
+    // x-axis
+    svgBar.append("text")
+        .attr("class", "axis-label")
+        .attr("x", width / 2)
+        .attr("y", height + (margin.bottom / 2) + 10)
+        .text("Director");
+
+    // y-axis
+    svgBar.append("text")
+        .attr("class", "axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left / 2)
+        .attr("x", -height / 2)
+        .text("Average Score");
 });
