@@ -30,47 +30,94 @@ d3.csv("movies.csv").then(data => {
 
     // 3: PREPARE LINE CHART DATA (Total Gross by Year)
     // 3.a: Filter out entries with null gross values
+    const lineCleanData = data.filter(d => d.gross != null
+            && d.year != null
+            && d.year >= 2010
+    );
 
+    console.log("Line clean data: ", lineCleanData);
 
     // 3.b: Group by and summarize (aggregate gross by year)
+    const lineMap = d3.rollup(lineCleanData,
+        v => d3.sum(v, d => d.gross), //total (sum) gross
+        d => d.year // group by year
+    );
 
+    console.log("Line map data: ", lineMap);
 
     // 3.c: Convert to array and sort by year
-
+    const lineDataArr = Array.from(lineMap, ([year, gross]) => ({ year, gross }))
+        .sort((a, b) => a.year - b.year);
 
     // Check your work
-    // console.log(lineData);
+    console.log("Line data converted to array and sorted: ", lineDataArr);
 
     // 4: SET SCALES FOR LINE CHART
     // 4.a: X scale (Year)
-
+    const xYearScale = d3.scaleLinear()
+        .domain([2010, d3.max(lineDataArr, d => d.year)])
+        .range([0, width]);
 
     // 4.b: Y scale (Gross)
-
+    const yGrossScale = d3.scaleLinear()
+        .domain([0, d3.max(lineDataArr, d => d.gross)])
+        .range([height, 0]);
 
     // 4.c: Define line generator for plotting line
-
+    const line = d3.line()
+        .x(d => xYearScale(d.year))
+        .y(d => yGrossScale(d.gross));
 
     // 5: PLOT LINE
-
+    svgLine.append("path")
+        .datum(lineDataArr) // bind data with datum()
+        .attr("d", line)
+        .attr("stroke", "purple")
+        .attr("stroke-width", 3)
+        .attr("fill", "none");
 
     // 6: ADD AXES FOR LINE CHART
     // 6.a: X-axis (Year)
-
+    svgLine.append("g")
+        .attr("transform", `translate(0,${height})`)
+        .call(d3.axisBottom(xYearScale)
+            .tickFormat(d3.format("d")) // remove decimals
+            .tickValues(d3.range(
+                d3.min(lineDataArr, d => d.year),
+                d3.max(lineDataArr, d => d.year) + 1
+            ))
+        );
 
     // 6.b: Y-axis (Gross)
-
+    svgLine.append("g")
+        .call(d3.axisLeft(yGrossScale)
+            .tickFormat(d => d/1000000000 + "B"));
 
     // 7: ADD LABELS FOR LINE CHART
     // 7.a: Chart Title
-
+    svgLine.append("text")
+        .attr("class", "title")
+        .attr("x", width / 2)
+        .attr("y", -margin.top / 2)
+        .text("Trends in Total Gross Movie Revenue");
 
     // 7.b: X-axis label (Year)
-
+    svgLine.append("text")
+        .attr("class", "axis-label")
+        .attr("text-anchor", "middle")
+        .attr("x", width / 2)
+        .attr("y", height + (margin.bottom / 2) + 10)
+        .text("Year");
 
     // 7.c: Y-axis label (Total Gross)
+    svgLine.append("text")
+        .attr("class", "axis-label")
+        .attr("transform", "rotate(-90)")
+        .attr("y", -margin.left / 2)
+        .attr("x", -height / 2)
+        .text("Gross Revenue (Billion $)");
 
-    // 7.c: Y-axis label (Average IMDb Score)
+    // 7.c: Y-axis label (Average IMDb Score) (not needed for this viz)
 
     /* ===================== Bar CHART ===================== */
     // PREP DATA
